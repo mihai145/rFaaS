@@ -211,3 +211,23 @@ if( ${RFAAS_WITH_TESTING} )
   include(testing)
 endif()
 
+###
+# Python bindings
+###
+add_library(python_bindings SHARED
+  rfaas/lib/python_bindings.cpp
+)
+
+set_target_properties(python_bindings PROPERTIES
+  POSITION_INDEPENDENT_CODE ON
+  PREFIX ""
+  OUTPUT_NAME "python_bindings"
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/python"
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/python"
+)
+
+target_link_libraries(python_bindings PRIVATE
+  rfaaslib
+  rdmalib
+  spdlog::spdlog
+)
