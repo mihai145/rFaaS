@@ -82,7 +82,8 @@ namespace server {
     //rewind(pFile);
     //fread(_memory_handle,1,len,pFile);
     rdmalib::impl::expect_nonnull(
-      _library_handle = dlopen(
+      _library_handle = dlmopen(
+        LM_ID_NEWLM,
         ("/proc/self/fd/" + std::to_string(_fd)).c_str(),
         RTLD_NOW
       ),
