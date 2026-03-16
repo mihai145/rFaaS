@@ -116,6 +116,11 @@ namespace rfaas::executor_manager {
       mypid = getpid();
       auto out_file = ("executor_" + std::to_string(mypid));
 
+      if (setpgid(0, 0) == -1) {
+        spdlog::error("Failed to make executor the leader of process group {}", errno);
+        exit(1);
+      }
+
       spdlog::info("Child fork begins work on PID {}, using Docker? {}", mypid, use_docker);
       int fd = open(out_file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
       dup2(fd, 1);

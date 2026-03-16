@@ -1,5 +1,4 @@
 #include "rdmalib/rdmalib.hpp"
-#include "rdmalib/functions.hpp"
 
 #include "worker.hpp"
 

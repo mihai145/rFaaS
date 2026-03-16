@@ -91,7 +91,7 @@ namespace rfaas::executor_manager {
     if(executor) {
       int status;
       auto b = std::chrono::high_resolution_clock::now();
-      kill(executor->id(), SIGTERM);
+      kill(-executor->id(), SIGTERM);
       waitpid(executor->id(), &status, WUNTRACED);
       auto e = std::chrono::high_resolution_clock::now();
       spdlog::info("Waited for child {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(e-b).count());

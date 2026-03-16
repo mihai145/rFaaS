@@ -20,6 +20,7 @@ namespace worker
         uint64_t mgr_conn_r_addr;
         uint32_t mgr_conn_r_key;
         int timeout;
+        int iterations;
     };
 
     Options opts(int argc, char **argv)
@@ -40,6 +41,7 @@ namespace worker
             ("mgr_conn_r_addr", "", cxxopts::value<uint64_t>()->default_value("0"))
             ("mgr_conn_r_key", "", cxxopts::value<uint32_t>()->default_value("0"))
             ("timeout", "", cxxopts::value<int>()->default_value("0"))
+            ("iterations", "", cxxopts::value<int>()->default_value("0"))
         ;
         auto parsed_options = options.parse(argc, argv);
 
@@ -56,6 +58,7 @@ namespace worker
         result.mgr_conn_r_addr = parsed_options["mgr_conn_r_addr"].as<uint64_t>();
         result.mgr_conn_r_key = parsed_options["mgr_conn_r_key"].as<uint32_t>();
         result.timeout = parsed_options["timeout"].as<int>();
+        result.iterations = parsed_options["iterations"].as<int>();
 
         return result;
     }

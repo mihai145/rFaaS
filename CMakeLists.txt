@@ -141,6 +141,8 @@ target_link_libraries(rfaaslib PUBLIC Threads::Threads)
 ###
 add_executable(worker
   server/executor/worker_cli.cpp
+  server/executor/worker.cpp
+  server/executor/functions.cpp
 )
 add_executable(executor
   server/executor/cli.cpp

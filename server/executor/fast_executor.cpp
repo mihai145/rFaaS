@@ -126,6 +126,7 @@ namespace server {
             "--mgr_conn_r_addr", std::to_string(_workers_data[i]._mgr_conn.r_addr).c_str(),
             "--mgr_conn_r_key", std::to_string(_workers_data[i]._mgr_conn.r_key).c_str(),
             "--timeout", std::to_string(timeout).c_str(),
+            "--iterations", std::to_string(iterations).c_str(),
             nullptr
           };
           int ret = execvp(argv[0], const_cast<char**>(&argv[0]));

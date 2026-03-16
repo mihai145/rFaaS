@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <rdmalib/connection.hpp>
+#include <rdmalib/functions.hpp>
 
 #include "common.hpp"
 #include "functions.hpp"
