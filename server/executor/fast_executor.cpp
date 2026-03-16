@@ -3,7 +3,8 @@
 #include <atomic>
 #include <ostream>
 #include <sys/time.h>
-#include <sys/time.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/common.h>
@@ -258,12 +259,14 @@ namespace server {
       int msg_size,
       int recv_buf_size,
       int max_inline_data,
+      bool use_multiprocessing,
       int pin_threads,
       const executor::ManagerConnection & mgr_conn
   ):
     _closing(false),
     _numcores(numcores),
     _max_repetitions(0),
+    _use_multiprocessing(use_multiprocessing),
     _pin_threads(pin_threads)
     //_mgr_conn(mgr_conn)
   {
@@ -278,7 +281,7 @@ namespace server {
 
   FastExecutors::~FastExecutors()
   {
-    spdlog::info("FastExecutor is closing threads...");
+    spdlog::info("FastExecutor is closing workers...");
     close();
   }
 
@@ -307,11 +310,50 @@ namespace server {
         thread.repetitions,
         static_cast<double>(thread._accounting.total_execution_time) / thread.repetitions / 1000.0
       );
+
+    SPDLOG_DEBUG("Wait on {} processes", _workers.size());
+    for (int pid : _workers) {
+      int status;
+      if (waitpid(pid, &status, 0) < 0) {
+        spdlog::info("Failed waitpid on {}", pid);
+      } else {
+        spdlog::info("Worker {} exited with status {}", pid, status);
+      }
+    }
+    SPDLOG_DEBUG("Finished wait on {} processes", _workers.size());
+
     _closing = true;
   }
 
-  void FastExecutors::allocate_threads(int timeout, int iterations)
+  void FastExecutors::allocate_workers(int timeout, int iterations)
   {
+    if (_use_multiprocessing) {
+      for(int i = 0; i < _numcores; ++i) {
+        pid_t pid = fork();
+        if(pid < 0) {
+          spdlog::error("Fork failed for {}-th worker! {}", i, pid);
+        }
+
+        if (pid == 0) {
+          const char * argv[] = {
+            "worker",
+            nullptr
+          };
+          int ret = execvp(argv[0], const_cast<char**>(&argv[0]));
+          if(ret == -1) {
+            spdlog::error("Worker process failed {}, reason {}", errno, strerror(errno));
+            exit(1);
+          }
+        }
+
+        spdlog::info("Forked {}-th worker, pid {}", i, pid);
+        _workers.push_back(pid);
+      }
+
+      return;
+    }
+
+    // multithreading
     int pin_threads = _pin_threads;
     for(int i = 0; i < _numcores; ++i) {
       _threads_data[i].max_repetitions = iterations;

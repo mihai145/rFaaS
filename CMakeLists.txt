@@ -139,6 +139,9 @@ target_link_libraries(rfaaslib PUBLIC Threads::Threads)
 ###
 # Server
 ###
+add_executable(worker
+  server/executor/worker_cli.cpp
+)
 add_executable(executor
   server/executor/cli.cpp
   server/executor/opts.cpp
@@ -163,7 +166,7 @@ add_executable(resource_manager
   server/resource_manager/settings.cpp
   server/resource_manager/manager.cpp
 )
-set(targets "executor" "executor_manager" "resource_manager")
+set(targets "worker" "executor" "executor_manager" "resource_manager")
 foreach(target ${targets})
   add_dependencies(${target} cxxopts::cxxopts)
   add_dependencies(${target} spdlog::spdlog)

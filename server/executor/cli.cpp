@@ -63,11 +63,12 @@ int main(int argc, char ** argv)
     opts.msg_size,
     opts.recv_buffer_size,
     opts.max_inline_data,
+    opts.use_multiprocessing,
     opts.pin_threads,
     mgr
   );
 
-  executor.allocate_threads(opts.timeout, opts.repetitions + opts.warmup_iters);
+  executor.allocate_workers(opts.timeout, opts.repetitions + opts.warmup_iters);
 
   executor.close();
   return 0;
