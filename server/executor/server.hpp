@@ -57,6 +57,8 @@ namespace server {
     int mgr_secret;
     uint64_t accounting_buffer_addr;
     uint32_t accounting_buffer_rkey;
+
+    bool use_multiprocessing;
   };
 
   Options opts(int argc, char ** argv);

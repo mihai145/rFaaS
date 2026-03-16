@@ -30,6 +30,7 @@ namespace server {
       ("mgr-secret", "Use selected port", cxxopts::value<int>())
       ("mgr-buf-addr", "Use selected port", cxxopts::value<uint64_t>())
       ("mgr-buf-rkey", "Use selected port", cxxopts::value<uint32_t>())
+      ("use-multiprocessing", "Run functions in separate processes (instead of separate threads)", cxxopts::value<bool>()->default_value("false"))
     ;
     auto parsed_options = options.parse(argc, argv);
 
@@ -53,6 +54,8 @@ namespace server {
     result.mgr_secret = parsed_options["mgr-secret"].as<int>();
     result.accounting_buffer_addr = parsed_options["mgr-buf-addr"].as<uint64_t>();
     result.accounting_buffer_rkey = parsed_options["mgr-buf-rkey"].as<uint32_t>();
+
+    result.use_multiprocessing = parsed_options["use-multiprocessing"].as<bool>();
 
     std::string polling_mgr = parsed_options["polling-mgr"].as<std::string>();
     if(polling_mgr == "server") {

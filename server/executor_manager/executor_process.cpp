@@ -105,6 +105,9 @@ namespace rfaas::executor_manager {
     std::string mgr_buf_addr = std::to_string(conn.r_addr);
     std::string mgr_buf_rkey = std::to_string(conn.r_key);
 
+    std::string use_multiprocessing = "--use-multiprocessing=";
+    use_multiprocessing += exec.use_multiprocessing ? "true" : "false";
+
     int mypid = fork();
     if(mypid < 0) {
       spdlog::error("Fork failed! {}", mypid);
@@ -137,6 +140,7 @@ namespace rfaas::executor_manager {
           "--mgr-secret", mgr_secret.c_str(),
           "--mgr-buf-addr", mgr_buf_addr.c_str(),
           "--mgr-buf-rkey", mgr_buf_rkey.c_str(),
+          use_multiprocessing.c_str(),
           nullptr
         };
         int ret = execvp(argv[0], const_cast<char**>(&argv[0]));
@@ -204,6 +208,7 @@ namespace rfaas::executor_manager {
           "--mgr-secret", mgr_secret.c_str(),
           "--mgr-buf-addr", mgr_buf_addr.c_str(),
           "--mgr-buf-rkey", mgr_buf_rkey.c_str(),
+          use_multiprocessing.c_str(),
           nullptr
         };
         int ret = execvp(argv[0], const_cast<char**>(&argv[0]));

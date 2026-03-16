@@ -17,6 +17,12 @@
 
 int main(int argc, char ** argv)
 {
+  int rc = ibv_fork_init();
+  if(rc) {
+    spdlog::error("ibv_fork_init failed, cannot continue! Error code {}", rc);
+    exit(rc);
+  }
+
   //server::SignalHandler sighandler;
   auto opts = server::opts(argc, argv);
   if(opts.verbose)
@@ -38,6 +44,9 @@ int main(int argc, char ** argv)
     "My manager runs at {}:{}, its secret is {}, the accounting buffer is at {} with rkey {}",
     opts.mgr_address, opts.mgr_port, opts.mgr_secret,
     opts.accounting_buffer_addr, opts.accounting_buffer_rkey
+  );
+  spdlog::info(
+    "Running functions on different {}", opts.use_multiprocessing ? "processes" : "threads"
   );
 
   executor::ManagerConnection mgr{
