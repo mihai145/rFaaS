@@ -147,6 +147,7 @@ add_executable(executor
   server/executor/opts.cpp
   server/executor/fast_executor.cpp
   server/executor/functions.cpp
+  server/executor/worker.cpp
 )
 add_executable(executor_manager
   server/executor_manager/cli.cpp
