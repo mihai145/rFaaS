@@ -91,12 +91,16 @@ namespace server {
     }
     SPDLOG_DEBUG("Finished wait on {} processes", _workers.size());
 
-    for(auto & thread : _workers_data)
-      spdlog::info("Thread {} Repetitions {} Avg time {} ms",
-        thread.id,
-        thread.repetitions,
-        static_cast<double>(thread._accounting.total_execution_time) / thread.repetitions / 1000.0
-      );
+    if (!_use_multiprocessing) {
+      for(auto & thread : _workers_data)
+        spdlog::info("Thread {} Repetitions {} Avg time {} ms",
+          thread.id,
+          thread.repetitions,
+          static_cast<double>(thread._accounting.total_execution_time) / thread.repetitions / 1000.0
+        );
+    } else {
+      // for multiprocessing, each worker reports its own repetitions and avg time
+    }
 
     _closing = true;
   }
