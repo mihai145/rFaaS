@@ -19,10 +19,14 @@ namespace server {
 
   struct FastExecutors {
 
-    std::vector<server::Worker> _threads_data;
+    std::vector<server::Worker> _workers_data;
     std::vector<std::thread> _threads;
     std::vector<pid_t> _workers;
     bool _closing;
+    int _function_size;
+    int _msg_size;
+    int _recv_buf_size;
+    int _max_inline_data;
     int _numcores;
     int _max_repetitions;
     int _warmup_iters;

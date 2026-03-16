@@ -36,6 +36,10 @@ namespace server {
       const executor::ManagerConnection & mgr_conn
   ):
     _closing(false),
+    _function_size(func_size),
+    _msg_size(msg_size),
+    _recv_buf_size(recv_buf_size),
+    _max_inline_data(max_inline_data),
     _numcores(numcores),
     _max_repetitions(0),
     _use_multiprocessing(use_multiprocessing),
@@ -43,9 +47,9 @@ namespace server {
     //_mgr_conn(mgr_conn)
   {
     // Reserve place to ensure that no reallocations happen
-    _threads_data.reserve(numcores);
+    _workers_data.reserve(numcores);
     for(int i = 0; i < numcores; ++i)
-      _threads_data.emplace_back(
+      _workers_data.emplace_back(
         client_addr, port, i, func_size, msg_size,
         recv_buf_size, max_inline_data, mgr_conn
       );
@@ -76,13 +80,6 @@ namespace server {
         thread.join();
     SPDLOG_DEBUG("Finished wait on {} threads", _threads.size());
 
-    for(auto & thread : _threads_data)
-      spdlog::info("Thread {} Repetitions {} Avg time {} ms",
-        thread.id,
-        thread.repetitions,
-        static_cast<double>(thread._accounting.total_execution_time) / thread.repetitions / 1000.0
-      );
-
     SPDLOG_DEBUG("Wait on {} processes", _workers.size());
     for (int pid : _workers) {
       int status;
@@ -93,6 +90,13 @@ namespace server {
       }
     }
     SPDLOG_DEBUG("Finished wait on {} processes", _workers.size());
+
+    for(auto & thread : _workers_data)
+      spdlog::info("Thread {} Repetitions {} Avg time {} ms",
+        thread.id,
+        thread.repetitions,
+        static_cast<double>(thread._accounting.total_execution_time) / thread.repetitions / 1000.0
+      );
 
     _closing = true;
   }
@@ -109,6 +113,19 @@ namespace server {
         if (pid == 0) {
           const char * argv[] = {
             "worker",
+            "--addr", _workers_data[i].addr.c_str(),
+            "--port", std::to_string(_workers_data[i].port).c_str(),
+            "--id", std::to_string(_workers_data[i].id).c_str(),
+            "--functions_size", std::to_string(_function_size).c_str(),
+            "--buf_size", std::to_string(_msg_size).c_str(),
+            "--recv_buffer_size", std::to_string(_recv_buf_size).c_str(),
+            "--max_inline_data", std::to_string(_max_inline_data).c_str(),
+            "--mgr_conn_addr", _workers_data[i]._mgr_conn.addr.c_str(),
+            "--mgr_conn_port", std::to_string(_workers_data[i]._mgr_conn.port).c_str(),
+            "--mgr_conn_secret", std::to_string(_workers_data[i]._mgr_conn.secret).c_str(),
+            "--mgr_conn_r_addr", std::to_string(_workers_data[i]._mgr_conn.r_addr).c_str(),
+            "--mgr_conn_r_key", std::to_string(_workers_data[i]._mgr_conn.r_key).c_str(),
+            "--timeout", std::to_string(timeout).c_str(),
             nullptr
           };
           int ret = execvp(argv[0], const_cast<char**>(&argv[0]));
@@ -128,10 +145,10 @@ namespace server {
     // multithreading
     int pin_threads = _pin_threads;
     for(int i = 0; i < _numcores; ++i) {
-      _threads_data[i].max_repetitions = iterations;
+      _workers_data[i].max_repetitions = iterations;
       _threads.emplace_back(
         &Worker::thread_work,
-        &_threads_data[i],
+        &_workers_data[i],
         timeout
       );
       // FIXME: make sure that native handle is actually from pthreads
