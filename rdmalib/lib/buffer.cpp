@@ -104,6 +104,14 @@ namespace rdmalib { namespace impl {
     );
   }
 
+  void Buffer::deregister_memory()
+  {
+    if(_mr) {
+      ibv_dereg_mr(_mr);
+      _mr=nullptr;
+    }
+  }
+
   ibv_mr* Buffer::mr() const
   {
     return this->_mr;

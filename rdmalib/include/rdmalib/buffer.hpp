@@ -50,6 +50,7 @@ namespace rdmalib {
       uint32_t lkey() const;
       uint32_t rkey() const;
       ScatterGatherElement sge(uint32_t size, uint32_t offset) const;
+      void deregister_memory();
     };
 
   }
