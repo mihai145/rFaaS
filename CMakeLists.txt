@@ -80,6 +80,17 @@ if (NOT PkgConfig_FOUND)
 endif (NOT PkgConfig_FOUND)
 
 ###
+# Embed patched rdma-core library path into binaries
+###
+set(RDMA_CORE_PATH "/opt/rdma-core-patched" CACHE STRING "Path to patched rdma-core")
+if(EXISTS "${RDMA_CORE_PATH}/lib")
+  set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
+  list(APPEND CMAKE_BUILD_RPATH "${RDMA_CORE_PATH}/lib")
+  list(APPEND CMAKE_INSTALL_RPATH "${RDMA_CORE_PATH}/lib")
+  set(ENV{PKG_CONFIG_PATH} "${RDMA_CORE_PATH}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+endif()
+
+###
 # librdmacm
 ###
 
