@@ -21,7 +21,8 @@ namespace rfaas::executor_manager {
     //accounting(_acc),
     allocation_time(0),
     _active(active),
-    _id(id)
+    _id(id),
+    lease_id(std::nullopt)
   {
     // Make the buffer accessible to clients
     memset(accounting.data(), 0, accounting.data_size());
@@ -39,7 +40,9 @@ namespace rfaas::executor_manager {
     executor(std::move(obj.executor)),
     accounting(std::move(obj.accounting)),
     allocation_time(std::move(obj.allocation_time)),
-    _active(std::move(obj._active))
+    _active(std::move(obj._active)),
+    _id(std::move(obj._id)),
+    lease_id(std::move(obj.lease_id))
   {
     obj.connection = nullptr;
   }
@@ -52,6 +55,8 @@ namespace rfaas::executor_manager {
     accounting = std::move(obj.accounting);
     allocation_time = std::move(obj.allocation_time);
     _active = std::move(obj._active);
+    _id = std::move(obj._id);
+    lease_id = std::move(obj.lease_id);
 
     obj.connection = nullptr;
 
@@ -82,11 +87,6 @@ namespace rfaas::executor_manager {
         ).count();
     }
 
-    rdma_disconnect(connection->id());
-    SPDLOG_DEBUG(
-      "[Client] Disconnect client with connection {} id {}",
-      fmt::ptr(connection), fmt::ptr(connection->id())
-    );
     // First, we check if the child is still alive
     if(executor) {
       int status;
@@ -106,14 +106,24 @@ namespace rfaas::executor_manager {
 
     if(res_mgr_connection) {
 
-      res_mgr_connection->close_lease(
-        _id,
-        allocation_time,
-        accounting.data()[0].execution_time,
-        accounting.data()[0].hot_polling_time
-      );
+      if (!lease_id.has_value()) {
+        spdlog::error("Client {} has no valid lease", _id);
+      } else {
+        res_mgr_connection->close_lease(
+          lease_id.value(),
+          allocation_time,
+          accounting.data()[0].execution_time,
+          accounting.data()[0].hot_polling_time
+        );
+      }
 
     }
+
+    rdma_disconnect(connection->id());
+    SPDLOG_DEBUG(
+      "[Client] Disconnect client with connection {} id {}",
+      fmt::ptr(connection), fmt::ptr(connection->id())
+    );
 
     //acc.hot_polling_time = acc.execution_time = 0;
     // SEGFAULT?

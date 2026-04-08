@@ -116,7 +116,7 @@ void Manager::listen_rdma() {
         _state.accept(conn);
 
       } else {
-
+        spdlog::info("[Manager] enqueueing CONNECT for client with id {}", _client_id);
         _client_queue.enqueue(
             std::make_tuple(
               Operation::CONNECT,
@@ -131,7 +131,8 @@ void Manager::listen_rdma() {
       if (private_data.key() == 1) {
         SPDLOG_DEBUG("[Manager] Listen thread: connected new executor");
       } else if (private_data.key() == 2) {
-        SPDLOG_DEBUG("[Manager] Listen thread: connected new client");
+        uint32_t qp_num = conn->qp()->qp_num;
+        SPDLOG_DEBUG("[Manager] Listen thread: connected new client with qp_num {}", qp_num);
       } else {
         SPDLOG_DEBUG("[Manager] Listen thread: unknown connection!");
         conn->close();
@@ -260,13 +261,13 @@ void Manager::process_executors()
 void Manager::_handle_client_connection(Client& client)
 {
   uint32_t qp_num = client.connection->qp()->qp_num;
+  int new_client_id = client.client_id;
   _clients.insert_or_assign(qp_num, std::move(client));
-  spdlog::debug("[Manager] Connecting client {}", _client_id - 1);
+  spdlog::debug("[Manager] Connecting client {} with qp_num {}", new_client_id, qp_num);
 }
 
 void Manager::_handle_client_disconnection(rdmalib::Connection* conn)
 {
-  _executors.remove_executor(conn->qp()->qp_num);
   auto it = _clients.find(conn->qp()->qp_num);
   if (it != _clients.end()) {
     _clients.erase(it);
@@ -298,8 +299,11 @@ void Manager::_handle_client_message(ibv_wc& wc, std::vector<Client*>& poll_send
   int16_t cores = client.allocation_requests.data()[id].cores;
   int32_t memory = client.allocation_requests.data()[id].memory;
 
+  spdlog::info("Handling client message on qp_num {} from client id {}", qp_num, client.client_id);
+
   if (cores > 0) {
-    spdlog::info("Client requests executor with {} threads, it should have {} memory", 
+    spdlog::info("Client {} requests executor with {} threads, it should have {} memory",
+                client.client_id,
                 client.allocation_requests.data()[id].cores,
                 client.allocation_requests.data()[id].memory
     );

@@ -24,14 +24,14 @@ namespace rfaas { namespace resource_manager {
   {
     int cores;
     int memory;
-    bool total;
     std::weak_ptr<Executor> node;
+    int id;
 
-    Lease(int cores, int memory, bool total, std::weak_ptr<Executor> && node):
+    Lease(int cores, int memory, std::weak_ptr<Executor> && node, int id):
       cores(cores),
       memory(memory),
-      total(total),
-      node(node)
+      node(node),
+      id(id)
     {}
   };
 

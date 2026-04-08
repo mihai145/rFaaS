@@ -191,12 +191,14 @@ namespace rfaas::executor_manager {
         } else {
 
           uint32_t qp_num = conn->qp()->qp_num;
-          SPDLOG_DEBUG("[Manager-RDMA] Accepted a new client {}", qp_num);
+          spdlog::info("[Manager-RDMA] Executor manager accepted a new client with qp_num {}", qp_num);
           Client client{qp_num, conn, _state.pd(), true};
           clients_to_connect.insert(qp_num);
 
-          _state.accept(client.connection);
+          rdmalib::Connection* conn_ptr = client.connection;
+          spdlog::info("Enqueue connect for client with id {}", client.id());
           _client_queue.emplace(Operation::CONNECT, msg_t{std::move(client)});
+          _state.accept(conn_ptr);
         }
 
         continue;
@@ -291,6 +293,8 @@ namespace rfaas::executor_manager {
         };
 
       }
+
+      client.lease_id = lease_id;
 
       rdmalib::PrivateData<0,0,32> data;
       data.secret(client.connection->qp()->qp_num);
@@ -411,6 +415,9 @@ namespace rfaas::executor_manager {
     } else {
 
       Client& client = std::get<Client>(message);
+
+      spdlog::info("Handled connection for client with id {} with qp_num {}", client.id(), client.connection->qp()->qp_num);
+
       _clients.emplace(std::piecewise_construct,
                       std::forward_as_tuple(client.connection->qp()->qp_num),
                       std::forward_as_tuple(std::move(client))

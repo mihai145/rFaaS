@@ -30,6 +30,7 @@ namespace rfaas::executor_manager {
     uint32_t allocation_time;
     bool _active;
     int _id;
+    std::optional<int> lease_id;
 
     Client(int id, rdmalib::Connection* conn, ibv_pd* pd, bool active);
     Client(Client &&);

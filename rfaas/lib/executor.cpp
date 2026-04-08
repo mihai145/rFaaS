@@ -232,23 +232,26 @@ namespace rfaas {
         auto cq = _connections[0].conn->wait_events();
         _connections[0].conn->notify_events(true);
         _connections[0].conn->ack_events(cq, 1);
-        auto wc = _connections[0].conn->receive_wcs().poll(false);
+        auto wc = _connections[0].conn->poll_wc(rdmalib::QueueType::RECV, false);
         for(int i = 0; i < std::get<1>(wc); ++i) {
-          uint32_t val = ntohl(std::get<0>(wc)[i].imm_data);
+          auto& wc_item = std::get<0>(wc)[i];
+
+          for(auto& c : _connections) {
+            if(c.conn->qp()->qp_num == wc_item.qp_num) {
+              c.conn->receive_wcs().update_requests(-1);
+              c.conn->receive_wcs().refill();
+              break;
+            }
+          }
+
+          uint32_t val = ntohl(wc_item.imm_data);
           int return_val = val & 0x0000FFFF;
           int finished_invoc_id = val >> 16;
           auto it = _futures.find(finished_invoc_id);
           // if it == end -> we have a bug, should never appear
-          //spdlog::info("Future for id {}", finished_invoc_id);
-          //(*it).second.set_value(return_val);
           // FIXME: handle error
           if(!--std::get<0>(it->second)) {
             std::get<1>(it->second).set_value(return_val);
-
-            _connections[0].conn->receive_wcs().update_requests(_connections.size() - 1);
-            for(int i = 1; i < _connections.size(); ++i) {
-              _connections[0].conn->receive_wcs().update_requests(-1);
-            }
           }
         }
         // Poll completions from past sends

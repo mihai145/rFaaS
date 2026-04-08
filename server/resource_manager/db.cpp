@@ -48,11 +48,6 @@ namespace rfaas { namespace resource_manager {
     // Obtain write access
     writer_lock_t lock(_mutex);
 
-    if(!_free_nodes.size()) {
-      SPDLOG_DEBUG("No available executors!");
-      return nullptr;
-    }
-
     std::weak_ptr<Executor> used_node;
 
     auto it = _free_nodes.begin();
@@ -85,15 +80,10 @@ namespace rfaas { namespace resource_manager {
       lease.port = shared_ptr->port;
       strncpy(lease.address, shared_ptr->address.c_str(), Executor::ADDRESS_LENGTH);
 
-      bool is_total = shared_ptr->is_fully_leased();
-      if(is_total) {
-        _free_nodes.erase(it);
-      }
-
       _leases.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(lease.lease_id),
-        std::forward_as_tuple(numcores, memory, is_total, std::move(ptr))
+        std::forward_as_tuple(numcores, memory, std::move(ptr), lease.lease_id)
       );
 
       return shared_ptr;
@@ -105,6 +95,8 @@ namespace rfaas { namespace resource_manager {
 
   void ExecutorDB::close_lease(common::LeaseDeallocation & msg)
   {
+    spdlog::info("Close lease request for lease {}", msg.lease_id);
+
     writer_lock_t lock(_mutex);
 
     auto it = _leases.find(msg.lease_id);
@@ -123,10 +115,7 @@ namespace rfaas { namespace resource_manager {
 
     shared_ptr->cancel_lease((*it).second);
 
-    if((*it).second.total) {
-      _free_nodes.push_back(ptr);
-    }
-
+    _leases.erase(it);
   }
 
   ExecutorDB::reader_lock_t ExecutorDB::read_lock()

@@ -59,6 +59,7 @@ namespace rfaas::resource_manager {
 
     _free_cores -= cores;
     _free_memory -= memory;
+    spdlog::info("Executor resources after leasing: cores {}, memory {}", _free_cores, _free_memory);
 
     return true;
   }
@@ -72,6 +73,7 @@ namespace rfaas::resource_manager {
   {
     _free_cores += lease.cores;
     _free_memory += lease.memory;
+    spdlog::info("Executor resources after canceling lease: cores {}, memory {}", _free_cores, _free_memory);
   }
 
   Executors::Executors(ibv_pd* pd):
