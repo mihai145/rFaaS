@@ -304,7 +304,7 @@ namespace rfaas {
       if(benchmarker)
         benchmarker->start();
       bool ret = _exec_manager->connect();
-      spdlog::error("connect");
+      // spdlog::error("connect");
       if(benchmarker) {
         benchmarker->end(0);
         benchmarker->start();
