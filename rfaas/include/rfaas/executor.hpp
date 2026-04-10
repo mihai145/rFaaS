@@ -48,6 +48,9 @@ namespace rfaas {
   };
 
   struct executor {
+    std::string _executor_address;
+    int _executor_port;
+
     static constexpr int MAX_REMOTE_WORKERS = 64;
     rdmalib::RDMAPassive _state;
     rdmalib::Buffer<rdmalib::BufferInformation> _execs_buf;

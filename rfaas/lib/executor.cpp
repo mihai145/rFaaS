@@ -38,6 +38,8 @@ namespace rfaas {
   }
 
   executor::executor(const std::string& address, int port, int numcores, int memory, int lease_id, device_data & dev):
+    _executor_address(address),
+    _executor_port(port),
     _state(dev.ip_address, dev.port, std::max(dev.default_receive_buffer_size, (int16_t)numcores) + 1),
     _execs_buf(MAX_REMOTE_WORKERS),
     _device(dev),
@@ -71,6 +73,8 @@ namespace rfaas {
   }
 
   executor::executor(executor&& obj):
+    _executor_address(std::move(obj._executor_address)),
+    _executor_port(std::move(obj._executor_port)),
     _state(std::move(obj._state)),
     _execs_buf(std::move(obj._execs_buf)),
     _device(std::move(obj._device)),
@@ -97,6 +101,8 @@ namespace rfaas {
 
     this->deallocate();
 
+    _executor_address = std::move(obj._executor_address);
+    _executor_port = std::move(obj._executor_port);
     _state = std::move(obj._state);
     _execs_buf = std::move(obj._execs_buf);
     _device = std::move(obj._device);
