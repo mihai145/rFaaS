@@ -20,7 +20,7 @@ namespace rfaas { namespace common {
 
   struct NodeRegistration {
 
-    static constexpr int NODE_NAME_LENGTH = 32;
+    static constexpr int NODE_NAME_LENGTH = 128;
 
     const uint32_t message_id = id_to_int(MessageIDs::NODE_REGISTRATION);
     char node_name[NODE_NAME_LENGTH];

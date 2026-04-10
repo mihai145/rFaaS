@@ -16,7 +16,7 @@ namespace rfaas {
   struct server_data
   {
     static constexpr int ADDRESS_LENGTH = 16;
-    static constexpr int NODE_NAME_LENGTH = 32;
+    static constexpr int NODE_NAME_LENGTH = 128;
 
     int32_t port;
     int16_t cores;
