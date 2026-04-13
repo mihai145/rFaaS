@@ -16,6 +16,10 @@ namespace rfaas::resource_manager {
     const Pistache::Http::Request& req, Pistache::Http::ResponseWriter response
   ) {
 
+    if(req.resource() == "/num_executors") {
+      response.send(Pistache::Http::Code::Ok, std::to_string(_database.num_executors()));
+      return;
+    }
 
     rapidjson::Document document;
     document.Parse(req.body().c_str());

@@ -73,7 +73,7 @@ namespace rfaas::resource_manager {
   {
     _free_cores += lease.cores;
     _free_memory += lease.memory;
-    spdlog::info("Executor resources after canceling lease: cores {}, memory {}", _free_cores, _free_memory);
+    spdlog::info("Executor {} resources after canceling lease: cores {}, memory {}", node, _free_cores, _free_memory);
   }
 
   Executors::Executors(ibv_pd* pd):
@@ -96,14 +96,13 @@ namespace rfaas::resource_manager {
     auto exec = std::make_shared<Executor>(name, ip, port, cores, memory);
     auto [it, success] = _executors_by_name.insert(std::make_pair(name, exec));
 
-    // Two possibilities: executor already exists or has been registered?
     if(!success) {
 
-      if((*it).second->is_initialized()) {
+      if((*it).second->is_initialized() && ((*it).second->_free_cores > 0 || (*it).second->_free_memory > 0)) {
         return std::make_tuple(std::weak_ptr<Executor>{}, false);
       } else {
         (*it).second->initialize_data(name, ip, port, cores, memory);
-        return std::make_tuple(exec, true);
+        return std::make_tuple((*it).second, true);
       }
 
     }
@@ -163,7 +162,19 @@ namespace rfaas::resource_manager {
 
   bool Executors::remove_executor(const std::string& name)
   {
-    throw std::runtime_error("Not implemented!");
+    auto it = _executors_by_name.find(name);
+    if(it == _executors_by_name.end()) {
+      return false;
+    }
+    auto executor = it->second;
+    for(auto conn_it = _executors_by_conn.begin(); conn_it != _executors_by_conn.end(); ++conn_it) {
+      if(conn_it->second == executor) {
+        _executors_by_conn.erase(conn_it);
+        break;
+      }
+    }
+    _executors_by_name.erase(it);
+    return true;
   }
 
   bool Executors::remove_executor(uint32_t qp_num)

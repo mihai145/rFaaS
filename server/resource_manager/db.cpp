@@ -74,6 +74,8 @@ namespace rfaas { namespace resource_manager {
         ++it;
         SPDLOG_DEBUG("Node {} cannot be used, not enough resources!", shared_ptr->node);
         continue;
+      } else {
+        spdlog::info("Node {} will be used, remaining cores {}, remaining memory {}", shared_ptr->node, shared_ptr->_free_cores, shared_ptr->_free_memory);
       }
 
       lease.lease_id = _lease_count++;
@@ -116,6 +118,16 @@ namespace rfaas { namespace resource_manager {
     shared_ptr->cancel_lease((*it).second);
 
     _leases.erase(it);
+  }
+
+  size_t ExecutorDB::num_executors()
+  {
+    reader_lock_t lock(_mutex);
+    size_t count = 0;
+    for(auto it = _executors.begin(); it != _executors.end(); ++it)
+      if(it->second->is_initialized())
+        ++count;
+    return count;
   }
 
   ExecutorDB::reader_lock_t ExecutorDB::read_lock()
