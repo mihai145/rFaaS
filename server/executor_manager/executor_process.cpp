@@ -117,11 +117,12 @@ namespace rfaas::executor_manager {
       auto out_file = ("executor_" + std::to_string(mypid));
 
       if (setpgid(0, 0) == -1) {
-        spdlog::error("Failed to make executor the leader of process group {}", errno);
+        const char msg[] = "Failed to make executor the leader of process group\n";
+        write(STDERR_FILENO, msg, sizeof(msg) - 1);
         exit(1);
       }
 
-      spdlog::info("Child fork begins work on PID {}, using Docker? {}", mypid, use_docker);
+      // spdlog::info("Child fork begins work on PID {}, using Docker? {}", mypid, use_docker);
       int fd = open(out_file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
       dup2(fd, 1);
       dup2(fd, 2);
@@ -150,7 +151,8 @@ namespace rfaas::executor_manager {
         };
         int ret = execvp(argv[0], const_cast<char**>(&argv[0]));
         if(ret == -1) {
-          spdlog::error("Executor process failed {}, reason {}", errno, strerror(errno));
+          const char msg[] = "Executor process failed\n";
+          write(STDERR_FILENO, msg, sizeof(msg) - 1);
           close(fd);
           exit(1);
         }
@@ -218,7 +220,8 @@ namespace rfaas::executor_manager {
         };
         int ret = execvp(argv[0], const_cast<char**>(&argv[0]));
         if(ret == -1) {
-          spdlog::error("Executor process failed {}, reason {}", errno, strerror(errno));
+          const char msg[] = "Executor process failed\n";
+          write(STDERR_FILENO, msg, sizeof(msg) - 1);
           close(fd);
           exit(1);
         }

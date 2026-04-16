@@ -30,6 +30,7 @@ namespace rfaas::resource_manager {
   Client::~Client()
   {
     if(connection) {
+      rdma_disconnect(connection->id());
       connection->close();
       delete connection;
     }
