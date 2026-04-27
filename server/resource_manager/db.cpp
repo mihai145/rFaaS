@@ -31,7 +31,7 @@ namespace rfaas { namespace resource_manager {
 
     _free_nodes.push_back(ptr);
 
-    spdlog::debug("Adding new executor {} with {}:{} address and {} cores", node_name, ip_address, port, cores);
+    spdlog::debug("Added new executor {} with {}:{} address and {} cores", node_name, ip_address, port, cores);
     return ResultCode::OK;
   }
 
@@ -40,6 +40,8 @@ namespace rfaas { namespace resource_manager {
     // Obtain write access
     writer_lock_t lock(_mutex);
     bool erased = _executors.remove_executor(node_name);
+
+    spdlog::debug("Removed executor {}, erased {}", node_name, erased);
     return erased ? ResultCode::OK : ResultCode::EXECUTOR_DOESNT_EXIST;
   }
 

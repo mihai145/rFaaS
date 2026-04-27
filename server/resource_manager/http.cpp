@@ -47,6 +47,8 @@ namespace rfaas::resource_manager {
       int cores{document["cores"].GetInt()};
       int memory{document["memory"].GetInt()};
 
+      spdlog::info("Received request to add executor {}, address {}:{}", node_name.value(), ip_address, port);
+
       // Return 400 if the request is malformed or incorret
       // If good, then return 200
       if(_database.add(node_name.value(), ip_address, port, cores, memory) == ExecutorDB::ResultCode::OK) {
@@ -65,6 +67,8 @@ namespace rfaas::resource_manager {
         response.send(Pistache::Http::Code::Bad_Request, "Malformed Input");
         return;
       }
+
+      spdlog::info("Received request to remove executor {}", node_name.value());
 
       // Return 400 if the request is malformed or incorret
       // If good, then return 200
