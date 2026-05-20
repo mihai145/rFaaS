@@ -122,14 +122,11 @@ namespace rfaas { namespace resource_manager {
     _leases.erase(it);
   }
 
-  size_t ExecutorDB::num_executors()
+  bool ExecutorDB::has_executor(const std::string& node_name)
   {
     reader_lock_t lock(_mutex);
-    size_t count = 0;
-    for(auto it = _executors.begin(); it != _executors.end(); ++it)
-      if(it->second->is_initialized())
-        ++count;
-    return count;
+    auto ptr = _executors.get_executor(node_name);
+    return ptr && ptr->is_initialized();
   }
 
   ExecutorDB::reader_lock_t ExecutorDB::read_lock()

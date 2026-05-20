@@ -16,17 +16,17 @@ namespace rfaas::resource_manager {
     const Pistache::Http::Request& req, Pistache::Http::ResponseWriter response
   ) {
 
-    if(req.resource() == "/num_executors") {
-      response.send(Pistache::Http::Code::Ok, std::to_string(_database.num_executors()));
-      return;
-    }
-
     rapidjson::Document document;
     document.Parse(req.body().c_str());
 
     auto node_name = req.query().get("node");
     if (!node_name.has_value()) {
       response.send(Pistache::Http::Code::Bad_Request, "Malformed Parameters");
+      return;
+    }
+
+    if(req.resource() == "/has_executor") {
+      response.send(Pistache::Http::Code::Ok, _database.has_executor(node_name.value()) ? "1" : "0");
       return;
     }
 

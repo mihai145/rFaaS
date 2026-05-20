@@ -58,7 +58,7 @@ namespace rfaas { namespace resource_manager {
     ResultCode add(const std::string& node_name, const std::string & ip_address, int port, int cores, int memory);
     ResultCode remove(const std::string& node_name);
 
-    size_t num_executors();
+    bool has_executor(const std::string& node_name);
 
 
     std::shared_ptr<Executor> open_lease(int numcores, int memory, rfaas::LeaseResponse& lease);
