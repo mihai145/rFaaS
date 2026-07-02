@@ -45,7 +45,7 @@ namespace worker
         ;
         auto parsed_options = options.parse(argc, argv);
 
-        Options result;
+        Options result{};
         result.addr = parsed_options["addr"].as<std::string>();
         result.port = parsed_options["port"].as<int>();
         result.id = parsed_options["id"].as<int>();
@@ -55,6 +55,7 @@ namespace worker
         result.max_inline_data = parsed_options["max_inline_data"].as<int>();
         result.mgr_conn_addr = parsed_options["mgr_conn_addr"].as<std::string>();
         result.mgr_conn_port = parsed_options["mgr_conn_port"].as<int>();
+        result.mgr_conn_secret = parsed_options["mgr_conn_secret"].as<int>();
         result.mgr_conn_r_addr = parsed_options["mgr_conn_r_addr"].as<uint64_t>();
         result.mgr_conn_r_key = parsed_options["mgr_conn_r_key"].as<uint32_t>();
         result.timeout = parsed_options["timeout"].as<int>();
