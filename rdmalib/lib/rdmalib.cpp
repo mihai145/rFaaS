@@ -300,7 +300,7 @@ namespace rdmalib {
         impl::expect_nonzero(this->_ec = rdma_create_event_channel());
         impl::expect_zero(rdma_create_id(this->_ec, &this->_listen_id, NULL, RDMA_PS_TCP));
         impl::expect_zero(rdma_bind_addr(this->_listen_id, this->_addr.addrinfo->ai_src_addr));
-        impl::expect_zero(rdma_listen(this->_listen_id, 10));
+        impl::expect_zero(rdma_listen(this->_listen_id, 128));
 
         _addr.set_port(ntohs(rdma_get_src_port(this->_listen_id)));
         this->_pd = _listen_id->pd;
