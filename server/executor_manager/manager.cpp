@@ -272,6 +272,16 @@ namespace rfaas::executor_manager {
 
       auto lease = _leases.get_threadsafe(lease_id);
 
+      // The grant is delivered to our CQ before the client learns its lease id, but may not be processed yet; drain and recheck.
+      // Only safe in the single-threaded sleep mode.
+      if(!lease.has_value() && !_skip_rm && _settings.rdma_sleep) {
+        auto [wcs, count] = _res_mgr_connection->connection().receive_wcs().poll(false);
+        for(int i = 0; i < count; ++i) {
+          _handle_res_mgr_message(wcs[i]);
+        }
+        lease = _leases.get_threadsafe(lease_id);
+      }
+
       if(!_skip_rm) {
 
         if(!lease.has_value()) {
