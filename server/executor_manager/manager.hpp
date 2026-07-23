@@ -5,6 +5,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <sys/types.h>
 #include <variant>
 #include <vector>
 #include <mutex>
@@ -128,12 +129,10 @@ namespace rfaas::executor_manager {
       DISCONNECT = 1
     };
 
-    // The first variatn members corresponds to a new executor for a client.
+    // The first variant member corresponds to a new executor for a client.
     // The second one corresponds to a client instance.
-    //
-    // Integer corresponds to the client number ID.
-    //
-    typedef std::variant<rdmalib::Connection*, Client> msg_t;
+    // The third one is the qp_num of a disconnected connection
+    typedef std::variant<rdmalib::Connection*, Client, uint32_t> msg_t;
     moodycamel::BlockingReaderWriterQueue<std::tuple<Operation, msg_t>> _client_queue;
 
     std::mutex clients;
@@ -161,11 +160,21 @@ namespace rfaas::executor_manager {
 
   private:
 
+    // Executors that did not exit right after SIGTERM
+    struct PendingReap {
+      pid_t pid;
+      std::chrono::steady_clock::time_point sigkill_at;
+      bool sigkilled;
+    };
+    std::vector<PendingReap> _pending_reaps;
+    void _defer_reap(pid_t pid);
+    void _reap_pending();
+
     typedef std::vector<std::unordered_map<uint32_t, Client>::iterator> removals_t;
     void _check_executors(removals_t & removals);
     std::tuple<Operation, msg_t>* _check_queue(bool sleep);
     void _handle_connections(msg_t & message);
-    void _handle_disconnections(rdmalib::Connection* conn);
+    void _handle_disconnections(uint32_t qp_num);
     bool _process_client(Client & client, uint64_t wr_id);
     void _process_events_sleep();
     void _handle_client_message(ibv_wc& wc);

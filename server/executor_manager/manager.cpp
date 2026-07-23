@@ -4,6 +4,7 @@
 #include <thread>
 #include <variant>
 
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -136,6 +137,7 @@ namespace rfaas::executor_manager {
   void Manager::listen()
   {
     std::unordered_set<uint32_t> clients_to_connect;
+    std::unordered_map<rdmalib::Connection*, uint32_t> conn_qp_nums;
 
     // FIXME: sleep when there are no clients
     while(!_shutdown.load()) {
@@ -158,9 +160,12 @@ namespace rfaas::executor_manager {
 
         spdlog::debug("[Manager-listen] Disconnection on connection {}", fmt::ptr(conn));
 
-        _client_queue.emplace(Operation::DISCONNECT, msg_t{conn});
-
-        clients_to_connect.erase(conn->qp()->qp_num);
+        auto qp_it = conn_qp_nums.find(conn);
+        if(qp_it != conn_qp_nums.end()) {
+          _client_queue.emplace(Operation::DISCONNECT, msg_t{qp_it->second});
+          clients_to_connect.erase(qp_it->second);
+          conn_qp_nums.erase(qp_it);
+        }
         continue;
       }
       // When client connects, we need to fill the receive queue with work requests before
@@ -168,6 +173,7 @@ namespace rfaas::executor_manager {
       else if(conn_status == rdmalib::ConnectionStatus::REQUESTED) {
         spdlog::debug("[Manager-listen] Requested new connection {}, private {}", fmt::ptr(conn), conn->private_data());
         rdmalib::PrivateData<0, 0, 32> private_data{conn->private_data()};
+        conn_qp_nums[conn] = conn->qp()->qp_num;
 
         if (private_data.secret() > 0) {
 
@@ -178,6 +184,7 @@ namespace rfaas::executor_manager {
             SPDLOG_DEBUG("[Manager-RDMA] Rejecting executor to an unknown client {}", qp_num);
             // This operation is thread-safe
             _state.reject(conn);
+            conn_qp_nums.erase(conn);
             delete conn;
 
           } else {
@@ -343,7 +350,10 @@ namespace rfaas::executor_manager {
 
       spdlog::info("Client {} disconnects", client.id());
       //client.disable(i, _accounting_data.data()[i]);
-      client.disable(_res_mgr_connection.get());
+      pid_t pending = client.disable(_res_mgr_connection.get());
+      if(pending > 0) {
+        _defer_reap(pending);
+      }
 
       return false;
     }
@@ -384,7 +394,10 @@ namespace rfaas::executor_manager {
         spdlog::info("Finished cleanup");
 
         // FIXME: notify client
-        client.disable(_res_mgr_connection.get());
+        pid_t pending = client.disable(_res_mgr_connection.get());
+        if(pending > 0) {
+          _defer_reap(pending);
+        }
         removals.push_back(it);
       }
 
@@ -437,19 +450,48 @@ namespace rfaas::executor_manager {
     }
   }
 
-  void Manager::_handle_disconnections(rdmalib::Connection* conn)
+  void Manager::_handle_disconnections(uint32_t qp_num)
   {
-    auto it = _clients.find(conn->qp()->qp_num);
+    auto it = _clients.find(qp_num);
     if (it != _clients.end()) {
-      spdlog::debug("[Manager] Disconnecting client");
+      spdlog::debug("[Manager] Disconnecting client {}", qp_num);
 
       Client& client = (*it).second;
-      //client.disable(i, _accounting_data.data()[i]);
-      client.disable(_res_mgr_connection.get());
+      pid_t pending = client.disable(_res_mgr_connection.get());
+      if(pending > 0) {
+        _defer_reap(pending);
+      }
       _clients.erase(it);
 
     } else {
-      spdlog::debug("[Manager] Disconnecting unknown client");
+      // Client already removed
+      spdlog::debug("[Manager] Disconnecting unknown client {}", qp_num);
+    }
+  }
+
+  void Manager::_defer_reap(pid_t pid)
+  {
+    _pending_reaps.push_back({
+      pid, std::chrono::steady_clock::now() + std::chrono::seconds(2), false
+    });
+  }
+
+  void Manager::_reap_pending()
+  {
+    for(auto it = _pending_reaps.begin(); it != _pending_reaps.end();) {
+      int status;
+      pid_t ret = waitpid(it->pid, &status, WNOHANG);
+      if(ret != 0) {
+        it = _pending_reaps.erase(it);
+      } else if(!it->sigkilled && std::chrono::steady_clock::now() >= it->sigkill_at) {
+        spdlog::warn("Executor {} survived SIGTERM, sending SIGKILL", it->pid);
+        kill(-it->pid, SIGKILL);
+        kill(it->pid, SIGKILL);
+        it->sigkilled = true;
+        ++it;
+      } else {
+        ++it;
+      }
     }
   }
 
@@ -493,7 +535,7 @@ namespace rfaas::executor_manager {
           _handle_connections(std::get<1>(*ptr));
           conn_count++;
         } else {
-          _handle_disconnections(std::get<0>(std::get<1>(*ptr)));
+          _handle_disconnections(std::get<uint32_t>(std::get<1>(*ptr)));
         }
       }
 
@@ -506,6 +548,7 @@ namespace rfaas::executor_manager {
       }
 
       _check_executors(removals);
+      _reap_pending();
 
       if(removals.size()) {
         for(auto it : removals) {
@@ -542,7 +585,7 @@ namespace rfaas::executor_manager {
     event_poller.add_channel(client_poller, 0);
 
     std::vector<Client*> poll_send;
-    std::vector<rdmalib::Connection*> disconnections;
+    std::vector<uint32_t> disconnections;
 
     auto queue = [this,&disconnections]() {
 
@@ -557,7 +600,7 @@ namespace rfaas::executor_manager {
           if (std::get<0>(*ptr) == Operation::CONNECT) {
             _handle_connections(std::get<1>(*ptr));
           } else {
-            disconnections.emplace_back(std::get<0>(std::get<1>(*ptr)));
+            disconnections.emplace_back(std::get<uint32_t>(std::get<1>(*ptr)));
           }
         }
 
@@ -616,8 +659,8 @@ namespace rfaas::executor_manager {
 
       if(disconnections.size()) {
 
-        for (auto conn : disconnections) {
-          _handle_disconnections(conn);
+        for (auto qp_num : disconnections) {
+          _handle_disconnections(qp_num);
         }
 
         disconnections.clear();
@@ -629,6 +672,8 @@ namespace rfaas::executor_manager {
         }
         poll_send.clear();
       }
+
+      _reap_pending();
 
     }
     spdlog::info("Background thread stops processing client events");

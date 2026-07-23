@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <sys/types.h>
 
 #include <rdmalib/connection.hpp>
 #include <rdmalib/rdmalib.hpp>
@@ -37,7 +38,7 @@ namespace rfaas::executor_manager {
     Client& operator=(Client &&);
     ~Client();
     void reload_queue();
-    void disable(ResourceManagerConnection* res_mgr_connection);
+    pid_t disable(ResourceManagerConnection* res_mgr_connection);
     bool active();
 
     int id() const

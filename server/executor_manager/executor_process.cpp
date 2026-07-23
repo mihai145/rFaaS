@@ -95,7 +95,7 @@ namespace rfaas::executor_manager {
     std::string executor_max_inline = std::to_string(exec.max_inline_data);
     std::string executor_pin_threads;
     if(exec.pin_threads >= 0)
-      executor_pin_threads = std::to_string(0);//counter++);
+      executor_pin_threads = std::to_string(0);
     else
       executor_pin_threads = std::to_string(exec.pin_threads);
     bool use_docker = exec.use_docker;
@@ -230,8 +230,7 @@ namespace rfaas::executor_manager {
       //close(fd);
       exit(0);
     }
-    if(counter == 36)
-      counter = 0;
+    setpgid(mypid, mypid);  // both-sides setpgid
     return new ProcessExecutor{lease.cores, begin, mypid};
   }
 

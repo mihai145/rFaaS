@@ -76,8 +76,9 @@ namespace rfaas::executor_manager {
     connection->receive_wcs().refill();
   }
 
-  void Client::disable(ResourceManagerConnection* res_mgr_connection)
+  pid_t Client::disable(ResourceManagerConnection* res_mgr_connection)
   {
+    pid_t pending_reap = -1;
 
     if(executor) {
       auto now = std::chrono::high_resolution_clock::now();
@@ -90,11 +91,15 @@ namespace rfaas::executor_manager {
     // First, we check if the child is still alive
     if(executor) {
       int status;
-      auto b = std::chrono::high_resolution_clock::now();
-      kill(-executor->id(), SIGTERM);
-      waitpid(executor->id(), &status, WUNTRACED);
-      auto e = std::chrono::high_resolution_clock::now();
-      spdlog::info("Waited for child {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(e-b).count());
+      pid_t pid = executor->id();
+      if(kill(-pid, SIGTERM) != 0) {
+        kill(pid, SIGTERM); // The executor may not have called setpgid() yet
+      }
+      pid_t ret = waitpid(pid, &status, WNOHANG);
+      if(ret == 0) {
+        spdlog::info("Executor {} still alive after SIGTERM, deferring reap", pid);
+        pending_reap = pid;
+      }
       executor.reset();
     }
     spdlog::info(
@@ -132,6 +137,8 @@ namespace rfaas::executor_manager {
     delete connection;
     connection = nullptr;
     _active=false;
+
+    return pending_reap;
   }
 
   bool Client::active()
