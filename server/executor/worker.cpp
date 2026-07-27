@@ -173,6 +173,8 @@ namespace server {
     func_buffer.register_memory(active.pd(), IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
     this->conn->post_recv(func_buffer);
 
+    this->conn->receive_wcs().refill();   // post recvs before connecting
+
     // Request notification before connecting - avoid missing a WC!
     // Do it only when starting from a warm directly
     if(timeout == -1) {
@@ -208,7 +210,6 @@ namespace server {
     this->conn->poll_wc(rdmalib::QueueType::RECV, true, 1);
     _functions.process_library();
 
-    this->conn->receive_wcs().refill();
     spdlog::info("Thread {} begins work with timeout {}", id, timeout);
 
     // FIXME: catch interrupt handler here
