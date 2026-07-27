@@ -224,7 +224,7 @@ namespace rfaas {
       my_pollfd.events  = POLLIN;
       my_pollfd.revents = 0;
       do {
-        rc = poll(&my_pollfd, 1, 100);
+        rc = poll(&my_pollfd, 1, 10);
         if(_end_requested) {
           spdlog::info("Background thread stops waiting for events");
           return;
