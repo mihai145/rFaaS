@@ -90,15 +90,17 @@ namespace rfaas::executor_manager {
 
     // First, we check if the child is still alive
     if(executor) {
-      int status;
       pid_t pid = executor->id();
-      if(kill(-pid, SIGTERM) != 0) {
-        kill(pid, SIGTERM); // The executor may not have called setpgid() yet
-      }
-      pid_t ret = waitpid(pid, &status, WNOHANG);
-      if(ret == 0) {
-        spdlog::info("Executor {} still alive after SIGTERM, deferring reap", pid);
-        pending_reap = pid;
+      if(pid > 0) { // spawn failed
+        int status;
+        if(kill(-pid, SIGTERM) != 0) {
+          kill(pid, SIGTERM); // The executor may not have called setpgid() yet
+        }
+        pid_t ret = waitpid(pid, &status, WNOHANG);
+        if(ret == 0) {
+          spdlog::info("Executor {} still alive after SIGTERM, deferring reap", pid);
+          pending_reap = pid;
+        }
       }
       executor.reset();
     }
