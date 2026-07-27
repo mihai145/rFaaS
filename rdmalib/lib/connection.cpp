@@ -136,7 +136,7 @@ namespace rdmalib {
         wr.num_sge = elem.size();
         SPDLOG_DEBUG("post recv to local Local QPN {}", _qp->qp_num);
 
-        int ret;
+        int ret = 0;
         for (int i = 0; i < count; ++i) {
             ret = ibv_post_recv(_qp, &wr, &bad);
             if (ret)
@@ -146,6 +146,8 @@ namespace rdmalib {
             spdlog::error("Post receive unsuccesful, reason {} {}", ret, strerror(ret));
             return -1;
         }
+        // These WRs occupy receive queue slots, so they have to count against the refill budget
+        _rcv_wcs.update_requests(count);
         if (wr.num_sge > 0)
             SPDLOG_DEBUG("Post recv succesfull, sges_count {}, sge[0].addr {}, sge[0].size {}, wr_id {}", wr.num_sge,
                          wr.sg_list[0].addr, wr.sg_list[0].length, wr.wr_id);
